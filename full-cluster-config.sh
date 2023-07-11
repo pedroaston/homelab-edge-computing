@@ -123,7 +123,7 @@ sudo chown $(id -u):$(id -g) $HOME/.kube/config
 # Check cluster status:
 kubectl cluster-info
 
-# (6th - master node): 
+# (6th - master node): Install Kubernetes network plugin - Calico (My choice)
 
 # Install the Tigera Calico operator
 kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.26.1/manifests/tigera-operator.yaml
@@ -143,5 +143,25 @@ kubectl get nodes -o wide
 # Join cluster
 sudo kubeadm join <controlnode-ip>:6443 --cri-socket /run/cri-dockerd.sock --token xn4v7c.bzgh43k0t4vyqbuq \
   --discovery-token-ca-cert-hash sha256:b9bf08b24e5f3bf709122fd009418ccf600bc4b97546adc73e05bfa40601362d
-# Confirm in control node that the workers were added
+# Confirm in master node that the workers were added
 kubectl get nodes
+
+# (8th - master node): Install metrics server
+
+# Download manifest file and edit it
+wget https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml -O metrics-server-components.yaml
+vim metrics-server-components.yaml
+  (...)
+  containers:
+    - args:
+        - --cert-dir=/tmp
+        - --secure-port=4443
+        - --kubelet-insecure-tls # Add this line
+        - --kubelet-preferred-address-types=InternalIP,ExternalIP,Hostname
+        - --kubelet-use-node-status-port
+  (...)
+# Run metrics server
+kubectl apply -f metrics-server-components.yaml
+# Confirm it is running and check it
+kubectl get pod -n kube-system
+kubectl top node
